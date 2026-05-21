@@ -234,6 +234,7 @@ class SoftmaxSm100(Softmax):
         e2e_res: cutlass.Constexpr[int] = 4,
         e2e_frg_limit: cutlass.Constexpr[int] = 1,
         high_precision_e2e: cutlass.Constexpr[bool] = False,
+        quant_p_e4m3: cutlass.Constexpr[bool] = False,
     ):
         assert cute.size(acc_S_row.shape) % 2 == 0, "acc_S_row must have an even number of elements"
         frg_tile = 32
@@ -263,9 +264,17 @@ class SoftmaxSm100(Softmax):
                             acc_S_row_frg[k, j], acc_S_row_frg[k + 1, j],
                             high_precision=high_precision_e2e,
                         )
-            acc_S_row_converted_frg[None, j].store(
-                acc_S_row_frg[None, j].load().to(acc_S_row_converted.element_type)
-            )
+            if cutlass.const_expr(quant_p_e4m3):
+                # QAT_ATTN_P=fp8: round-trip P through E4M3FN before final cast
+                p_f32 = acc_S_row_frg[None, j].load()
+                p_f32 = p_f32.to(cutlass.Float8E4M3FN).to(Float32)
+                acc_S_row_converted_frg[None, j].store(
+                    p_f32.to(acc_S_row_converted.element_type)
+                )
+            else:
+                acc_S_row_converted_frg[None, j].store(
+                    acc_S_row_frg[None, j].load().to(acc_S_row_converted.element_type)
+                )
 
     @cute.jit
     def scale_apply_exp2_convert(

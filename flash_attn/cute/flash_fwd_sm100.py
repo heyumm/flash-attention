@@ -15,6 +15,7 @@
 
 import enum
 import math
+import os
 from typing import Type, Tuple, Callable, Optional, Literal
 from functools import partial
 
@@ -217,6 +218,8 @@ class FlashAttentionForwardSm100:
         self.num_regs_empty = 24
 
         self.buffer_align_bytes = 1024
+
+        self.qat_attn_p_fp8 = os.environ.get("QAT_ATTN_P", "") == "fp8"
 
     def _setup_attributes(self):
         """Set up configurations and parameters for the FMHA kernel operation.
@@ -1926,6 +1929,7 @@ class FlashAttentionForwardSm100:
             e2e=mask_fn is None and self.head_dim_padded <= 128,
             e2e_freq=self.e2e_freq,
             high_precision_e2e=self.high_precision_e2e,
+            quant_p_e4m3=self.qat_attn_p_fp8,
         )
         # Sequence barrier arrive
         if const_expr(self.s0_s1_barrier):
