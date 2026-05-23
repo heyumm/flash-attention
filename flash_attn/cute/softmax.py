@@ -265,7 +265,7 @@ class SoftmaxSm100(Softmax):
                             high_precision=high_precision_e2e,
                         )
             if cutlass.const_expr(quant_p_e4m3):
-                # QAT_ATTN_P=fp8: round-trip P through E4M3FN before final cast
+                # QAT_DENSE_P=fp8: round-trip P through E4M3FN before final cast
                 p_f32 = acc_S_row_frg[None, j].load()
                 p_f32 = p_f32.to(cutlass.Float8E4M3FN).to(Float32)
                 acc_S_row_converted_frg[None, j].store(
